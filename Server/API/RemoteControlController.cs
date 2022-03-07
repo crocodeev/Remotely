@@ -12,6 +12,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Remotely.Server.Auth;
 using System.Collections.Generic;
+using Remotely.Shared.Enums;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -39,10 +40,61 @@ namespace Remotely.Server.API
 
     [HttpGet("{deviceID}")]
     [ServiceFilter(typeof(ApiAuthorizationFilter))]
-    public async Task<IActionResult> Get(string deviceID, [FromQuery] bool prejoinSession = false)
+    public async Task<IActionResult> Get(string deviceID)
     {
       Request.Headers.TryGetValue("OrganizationID", out var orgID);
-      return await InitiateRemoteControl(deviceID, orgID, prejoinSession: prejoinSession);
+      return await InitiateRemoteControl(deviceID, orgID);
+    }
+
+    /// <summary>
+    /// Allows a requester to initiate an adhoc screen share to any device.
+    /// </summary>
+    /// <param name="deviceID"></param>
+    /// <returns></returns>
+    [HttpGet("adhoc/{deviceID}")]
+    [ServiceFilter(typeof(ApiAuthorizationFilter))]
+    public async Task<IActionResult> GetAdhoc(string deviceID, [FromQuery] string requesterName, [FromQuery] RemoteControlMode mode)
+    {
+      Request.Headers.TryGetValue("OrganizationID", out var orgID);
+
+      if (User.Identity.IsAuthenticated &&
+         !DataService.DoesUserHaveAccessToDevice(deviceID, DataService.GetUserByNameWithOrg(User.Identity.Name)))
+      {
+        return Unauthorized();
+      }
+
+      var currentUsers = CasterHub.SessionInfoList.Count(x => x.Value.OrganizationID == orgID);
+      if (currentUsers >= AppConfig.RemoteControlSessionLimit)
+      {
+        return BadRequest("There are already the maximum amount of active remote control sessions for your organization.");
+      }
+      
+      var otp = RemoteControlFilterAttribute.GetOtp(deviceID);
+
+      var existingSession = CasterHub.SessionInfoList
+        .Where(x => x.Value.DeviceID == deviceID)
+        .LastOrDefault();
+
+
+      // if a session already exists for the given device, then no need to prejoin.
+      if (existingSession.Key is not null)
+      {
+        return Ok($"{HttpContext.Request.Scheme}://{Request.Host}/RemoteControl??mode={mode}&requesterName={requesterName}&casterID={existingSession.Value.CasterSocketID}&serviceID={existingSession.Value.ServiceID}&fromApi=true&otp={Uri.EscapeDataString(otp)}");
+      }
+
+      // generate some code used to identifiy the device id and org id
+      var prejoinID = Guid.NewGuid();
+
+      if (ViewerHub.ViewersWaitingForConnection.TryGetValue(deviceID, out var prejoinIds))
+      {
+        prejoinIds.Add(prejoinID);
+      }
+      else
+      {
+        ViewerHub.ViewersWaitingForConnection.TryAdd(deviceID, new List<Guid> { prejoinID });
+      }
+
+      return Ok($"{HttpContext.Request.Scheme}://{Request.Host}/RemoteControl?mode={mode}&requesterName={requesterName}&prejoinID={prejoinID}&fromApi=true&otp={Uri.EscapeDataString(otp)}");
     }
 
     [HttpPost]
@@ -76,26 +128,8 @@ namespace Remotely.Server.API
       return BadRequest();
     }
 
-    private async Task<IActionResult> InitiateRemoteControl(string deviceID, string orgID, bool prejoinSession = false)
+    private async Task<IActionResult> InitiateRemoteControl(string deviceID, string orgID)
     {
-      if (prejoinSession)
-      {
-        // generate some code used to identifiy the device id and org id
-        var prejoinID = Guid.NewGuid();
-
-        if (ViewerHub.ViewersWaitingForConnection.TryGetValue(deviceID, out var prejoinIds))
-        {
-          prejoinIds.Add(prejoinID);
-        }
-        else
-        {
-          ViewerHub.ViewersWaitingForConnection.TryAdd(deviceID, new List<Guid> { prejoinID });
-        }
-
-        var otp = RemoteControlFilterAttribute.GetOtp(deviceID);
-        return Ok($"{HttpContext.Request.Scheme}://{Request.Host}/RemoteControl?prejoinID={prejoinID}&fromApi=true&otp={Uri.EscapeDataString(otp)}");
-      }
-
       var targetDevice = AgentHub.ServiceConnections.FirstOrDefault(x =>
         x.Value.OrganizationID == orgID &&
         x.Value.ID.ToLower() == deviceID.ToLower());
@@ -125,8 +159,8 @@ namespace Remotely.Server.API
         bool remoteControlStarted()
         {
           return !CasterHub.SessionInfoList.Values
-              .Where(x => x.DeviceID == targetDevice.Value.ID)
-              .All(x => existingSessions.Contains(x.CasterSocketID));
+            .Where(x => x.DeviceID == targetDevice.Value.ID)
+            .All(x => existingSessions.Contains(x.CasterSocketID));
         };
 
         if (!await TaskHelper.DelayUntilAsync(remoteControlStarted, TimeSpan.FromSeconds(30)))

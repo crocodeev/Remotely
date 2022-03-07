@@ -161,12 +161,9 @@ namespace Remotely.Server.Hubs
       return CasterHubContext.Clients.Client(ScreenCasterID).SendAsync("ReceiveRtcAnswer", sdp, Context.ConnectionId);
     }
 
-    public Task WaitForDeviceToConnect(Guid prejoinID, string requesterName, int remoteControlMode, string otp)
+    public Task WaitForDeviceToConnect(Guid prejoinID)
     {
-      PrejoinID = PrejoinID;
-      RequesterName = requesterName;
-      Mode = (RemoteControlMode)remoteControlMode;
-      Otp = otp;
+      PrejoinID = prejoinID;
       Groups.AddToGroupAsync(Context.ConnectionId, prejoinID.ToString());
       return Task.CompletedTask;
     }
@@ -193,6 +190,16 @@ namespace Remotely.Server.Hubs
       {
         await Clients.Caller.SendAsync("SessionIDNotFound");
         return;
+      }
+
+      // remove prejoin id
+      if (PrejoinID.HasValue)
+      {
+        if (ViewersWaitingForConnection.TryGetValue(sessionInfo.DeviceID, out var prejoinIds))
+        {
+          prejoinIds.Remove(PrejoinID.Value);
+          if (prejoinIds.Count == 0) ViewersWaitingForConnection.Remove(sessionInfo.DeviceID, out _);
+        }
       }
 
       SessionInfo = sessionInfo;

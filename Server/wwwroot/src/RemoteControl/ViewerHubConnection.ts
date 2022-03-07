@@ -28,7 +28,7 @@ export class ViewerHubConnection {
     this.ApplyMessageHandlers(this.Connection);
 
     this.Connection.start().then(() => {
-      if (!waitForDevice) {
+      if (waitForDevice) {
         this.SendWaitForDeviceToConnect();
       } else {
         this.SendScreenCastRequestToDevice();
@@ -74,16 +74,14 @@ export class ViewerHubConnection {
   }
 
   SendWaitForDeviceToConnect() {
-    this.Connection.invoke("WaitForDeviceToConnect", ViewerApp.PrejoinID, ViewerApp.RequesterName, ViewerApp.Mode, ViewerApp.Otp);
+    this.Connection.invoke("WaitForDeviceToConnect", ViewerApp.PrejoinID);
   }
 
   private ApplyMessageHandlers(hubConnection) {
-    hubConnection.on("GuestConnected", (prejoinIds: string[], screenCasterID) => {
-      console.log("guest connected");
-      if (prejoinIds.includes(ViewerApp.PrejoinID)) {
-        this.Connection.invoke("SendScreenCastRequestToDevice", screenCasterID, ViewerApp.RequesterName, ViewerApp.Mode, ViewerApp.Otp);
-        UI.WaitForDeviceToConnectBox.style.display = "none";
-      }
+    hubConnection.on("GuestConnected", (screenCasterID: string) => {
+      ViewerApp.CasterID = screenCasterID;
+      this.Connection.invoke("SendScreenCastRequestToDevice", screenCasterID, ViewerApp.RequesterName, ViewerApp.Mode, ViewerApp.Otp);
+      UI.WaitForDeviceToConnectBox.style.display = "none";
     });
 
     hubConnection.on("SendDtoToBrowser", (dto: ArrayBuffer) => {

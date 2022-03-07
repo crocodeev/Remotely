@@ -16,7 +16,7 @@ export class ViewerHubConnection {
             .build();
         this.ApplyMessageHandlers(this.Connection);
         this.Connection.start().then(() => {
-            if (!waitForDevice) {
+            if (waitForDevice) {
                 this.SendWaitForDeviceToConnect();
             }
             else {
@@ -56,15 +56,13 @@ export class ViewerHubConnection {
         this.Connection.invoke("SendScreenCastRequestToDevice", ViewerApp.CasterID, ViewerApp.RequesterName, ViewerApp.Mode, ViewerApp.Otp);
     }
     SendWaitForDeviceToConnect() {
-        this.Connection.invoke("WaitForDeviceToConnect", ViewerApp.PrejoinID, ViewerApp.RequesterName, ViewerApp.Mode, ViewerApp.Otp);
+        this.Connection.invoke("WaitForDeviceToConnect", ViewerApp.PrejoinID);
     }
     ApplyMessageHandlers(hubConnection) {
-        hubConnection.on("GuestConnected", (prejoinIds, screenCasterID) => {
-            console.log("guest connected");
-            if (prejoinIds.includes(ViewerApp.PrejoinID)) {
-                this.Connection.invoke("SendScreenCastRequestToDevice", screenCasterID, ViewerApp.RequesterName, ViewerApp.Mode, ViewerApp.Otp);
-                UI.WaitForDeviceToConnectBox.style.display = "none";
-            }
+        hubConnection.on("GuestConnected", (screenCasterID) => {
+            ViewerApp.CasterID = screenCasterID;
+            this.Connection.invoke("SendScreenCastRequestToDevice", screenCasterID, ViewerApp.RequesterName, ViewerApp.Mode, ViewerApp.Otp);
+            UI.WaitForDeviceToConnectBox.style.display = "none";
         });
         hubConnection.on("SendDtoToBrowser", (dto) => {
             ViewerApp.DtoMessageHandler.ParseBinaryMessage(dto);

@@ -136,7 +136,7 @@ namespace Remotely.Server.Hubs
         // if we have a prejoin id then we need to notify all viewers waiting on a connection
         foreach (var prejoinId in prejoinIds)
         {
-          await ViewerHubContext.Clients.Group(prejoinId.ToString()).SendAsync("GuestConnected", prejoinIds, Context.ConnectionId);
+          await ViewerHubContext.Clients.Group(prejoinId.ToString()).SendAsync("GuestConnected", Context.ConnectionId);
         }
       }
     }

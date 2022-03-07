@@ -28,7 +28,7 @@ export const ViewerApp = {
   ViewOnlyMode: queryString["viewonly"] ?
     decodeURIComponent(queryString["viewonly"]).toLowerCase() == "true" :
     false,
-  Mode: RemoteControlMode.None,
+  Mode: queryString["mode"] == "Unattended" ? RemoteControlMode.Unattended : RemoteControlMode.None,
   Settings: GetSettings(),
 
   Init: () => {
@@ -69,12 +69,8 @@ export const ViewerApp = {
   },
   ConnectAndWaitForCient: () => {
     UI.ConnectButton.disabled = true;
-    // ViewerApp.CasterID = UI.SessionIDInput.value.split(" ").join("");
-    // ViewerApp.RequesterName = UI.RequesterNameInput.value;
-    ViewerApp.Mode = RemoteControlMode.Unattended;
     ViewerApp.ViewerHubConnection.Connect(true);
-    //UI.StatusMessage.innerHTML = "Request access on remote device...";
-    //ViewerApp.Settings.displayName = ViewerApp.RequesterName;
+    ViewerApp.Settings.displayName = ViewerApp.RequesterName;
     SetSettings(ViewerApp.Settings);
   },
   ConnectToClient: () => {
