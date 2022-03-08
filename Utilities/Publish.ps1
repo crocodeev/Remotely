@@ -22,8 +22,6 @@ param (
     [string]$SignerUrl = ""
 )
 
-
-
 $ErrorActionPreference = "Stop"
 $InstallerDir = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
 $VsWhere = "$InstallerDir\vswhere.exe"
@@ -156,12 +154,12 @@ dotnet publish /p:Version=$CurrentVersion /p:FileVersion=$CurrentVersion -p:Publ
 if ($SignAssemblies) {
     if ($SignerUrl) {
         Write-Host "Signing Win-x64 exe with signer url"
-        ./sign-binary-files.sh "$SignerUrl" "$Root\Server\wwwroot\Content\Win-x64\Remotely_Desktop.exe"
+        $Arguments = "$SignerUrl $Root\Server\wwwroot\Content\Win-x64\Remotely_Desktop.exe"
+        Start-Process -FilePath "$Root\Utilities\sign-binary-files.sh"  -ArgumentList $Arguments -Wait
     } else {
         &"$Root\Utilities\signtool.exe" sign /f "$CertificatePath" /p $CertificatePassword /t http://timestamp.digicert.com "$Root\Server\wwwroot\Content\Win-x64\Remotely_Desktop.exe"
     }
 }
-
 
 # Publish Windows GUI App (32-bit)
 dotnet publish /p:Version=$CurrentVersion /p:FileVersion=$CurrentVersion -p:PublishProfile=desktop-win-x86 --configuration Release "$Root\Desktop.Win"
@@ -170,7 +168,8 @@ dotnet publish /p:Version=$CurrentVersion /p:FileVersion=$CurrentVersion -p:Publ
 if ($SignAssemblies) {
     if ($SignerUrl) {
         Write-Host "Signing Win-x86 exe with signer url"
-        ./sign-binary-files.sh "$SignerUrl" "$Root\Server\wwwroot\Content\Win-x86\Remotely_Desktop.exe"
+        $Arguments = "$SignerUrl $Root\Server\wwwroot\Content\Win-x86\Remotely_Desktop.exe"
+        Start-Process -FilePath "$Root\Utilities\sign-binary-files.sh"  -ArgumentList $Arguments -Wait
     } else {
         &"$Root\Utilities\signtool.exe" sign /f "$CertificatePath" /p $CertificatePassword /t http://timestamp.digicert.com "$Root\Server\wwwroot\Content\Win-x86\Remotely_Desktop.exe"
     }
@@ -183,7 +182,8 @@ Copy-Item -Path "$Root\Agent.Installer.Win\bin\Release\Remotely_Installer.exe" -
 if ($SignAssemblies) {
     if ($SignerUrl) {
         Write-Host "Signing Remotely Installer with signer url"
-        ./sign-binary-files.sh "$SignerUrl" "$Root\Server\wwwroot\Content\Remotely_Installer.exe"
+        $Arguments = "$SignerUrl $Root\Server\wwwroot\Content\Remotely_Installer.exe"
+        Start-Process -FilePath "$Root\Utilities\sign-binary-files.sh"  -ArgumentList $Arguments -Wait
     } else {
         &"$Root\Utilities\signtool.exe" sign /f "$CertificatePath" /p $CertificatePassword /t http://timestamp.digicert.com "$Root\Server\wwwroot\Content\Remotely_Installer.exe"
     }
