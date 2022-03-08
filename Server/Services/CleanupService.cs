@@ -42,7 +42,7 @@ namespace Remotely.Server.Services
             using var scope = Services.CreateScope();
             var dataService = scope.ServiceProvider.GetRequiredService<IDataService>();
 
-           dataService.CleanupOldRecords();
+            dataService.CleanupOldRecords();
         }
     }
 }

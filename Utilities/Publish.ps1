@@ -18,7 +18,8 @@ param (
 	[string]$Hostname = "",
 	[string]$CertificatePath = "",
     [string]$CertificatePassword = "",
-    [string]$CurrentVersion = ""
+    [string]$CurrentVersion = "",
+    [string]$SignerUrl = ""
 )
 
 
@@ -50,6 +51,8 @@ if ($CertificatePath.Length -gt 0 -and
     (Test-Path -Path $CertificatePath) -eq $true -and 
     $CertificatePassword.Length -gt 0) 
 {
+    $SignAssemblies = $true
+} elseif ($SignerUrl -ne $null) {
     $SignAssemblies = $true
 }
 
@@ -147,7 +150,11 @@ dotnet publish /p:Version=$CurrentVersion /p:FileVersion=$CurrentVersion -p:Publ
 &"$MSBuildPath" "$Root\Desktop.Win" -t:Restore -t:Publish -p:PublishProfile="ClickOnce-x64.pubxml" -p:Configuration=Release -p:Platform=x64 -p:ApplicationVersion=$CurrentVersion -p:Version=$CurrentVersion -p:FileVersion=$CurrentVersion -p:PublishDir="$Root\Server\wwwroot\Content\Win-x64\ClickOnce\"
 
 if ($SignAssemblies) {
-    &"$Root\Utilities\signtool.exe" sign /f "$CertificatePath" /p $CertificatePassword /t http://timestamp.digicert.com "$Root\Server\wwwroot\Content\Win-x64\Remotely_Desktop.exe"
+    if ($SignerUrl -ne $null) {
+        chmod +x ./sign-binary-files.sh && ./sign-binary-files.sh "$SignerUrl" "$Root\Server\wwwroot\Content\Win-x64\Remotely_Desktop.exe"
+    } else {
+        &"$Root\Utilities\signtool.exe" sign /f "$CertificatePath" /p $CertificatePassword /t http://timestamp.digicert.com "$Root\Server\wwwroot\Content\Win-x64\Remotely_Desktop.exe"
+    }
 }
 
 
@@ -156,7 +163,11 @@ dotnet publish /p:Version=$CurrentVersion /p:FileVersion=$CurrentVersion -p:Publ
 &"$MSBuildPath" "$Root\Desktop.Win" -t:Restore -t:Publish -p:PublishProfile="ClickOnce-x86.pubxml" -p:Configuration=Release -p:Platform=x86 -p:ApplicationVersion=$CurrentVersion -p:Version=$CurrentVersion -p:FileVersion=$CurrentVersion -p:PublishDir="$Root\Server\wwwroot\Content\Win-x86\ClickOnce\"
 
 if ($SignAssemblies) {
-    &"$Root\Utilities\signtool.exe" sign /f "$CertificatePath" /p $CertificatePassword /t http://timestamp.digicert.com "$Root\Server\wwwroot\Content\Win-x86\Remotely_Desktop.exe"
+    if ($SignerUrl -ne $null) {
+        chmod +x ./sign-binary-files.sh && ./sign-binary-files.sh "$SignerUrl" "$Root\Server\wwwroot\Content\Win-x86\Remotely_Desktop.exe"
+    } else {
+        &"$Root\Utilities\signtool.exe" sign /f "$CertificatePath" /p $CertificatePassword /t http://timestamp.digicert.com "$Root\Server\wwwroot\Content\Win-x86\Remotely_Desktop.exe"
+    }
 }
 
 # Build installer.
