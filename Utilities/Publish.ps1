@@ -56,6 +56,10 @@ if ($CertificatePath.Length -gt 0 -and
     $SignAssemblies = $true
 }
 
+if (!$SigningAssemblies) {
+    Write-Host "Not signing assemblies"
+}
+
 
 
 Set-Location -Path $Root
